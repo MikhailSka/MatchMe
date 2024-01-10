@@ -1,0 +1,15 @@
+# .gitignore
+
+# Ignore node_modules
+node_modules/
+
+# Ignore the build directory
+/dist
+
+# Ignore environment variables
+.env
+
+# Ignore logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

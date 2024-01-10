@@ -1,0 +1,17 @@
+ {/* <Stack
+                direction="row"
+                spacing={1}
+                m={1}
+                pt={3}
+                sx={{ justifyContent: 'center' }}
+              >
+                <Fab variant="extended" sx={{ padding: '10px' }}>
+                  <LinkedInIcon />
+                </Fab>
+                <Fab variant="extended" sx={{ padding: '10px' }}>
+                  <FacebookIcon />
+                </Fab>
+                <Fab variant="extended" sx={{ padding: '10px' }}>
+                  <GitHubIcon />
+                </Fab>
+              </Stack> */}

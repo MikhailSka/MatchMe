@@ -1,0 +1,4 @@
+.content {
+  box-sizing: border-box;
+  min-height: calc(100vh - 100px);
+}

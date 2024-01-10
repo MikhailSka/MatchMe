@@ -1,0 +1,2464 @@
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'discount_type') THEN
+        CREATE TYPE discount_type AS ENUM ('percent', 'fixed');
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_specialty_list') THEN
+        CREATE TYPE product_specialty_list AS ENUM ('vegetarian', 'spicy', 'fitness');
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'sale_specialty_list') THEN
+        CREATE TYPE sale_specialty_list AS ENUM ('new', 'bestseller', 'limited');
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_status') THEN
+        CREATE TYPE order_status AS ENUM ('waiting_for_waiter', 'waiting_for_payment', 'waiting_for_food', 'closed');
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ready_status') THEN
+        CREATE TYPE ready_status AS ENUM ('in_process', 'ready_for_serving', 'served');
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'day_list') THEN
+        CREATE TYPE day_list AS ENUM (
+            'Monday',
+            'Tuesday',
+            'Wednesday',
+            'Thursday',
+            'Friday',
+            'Saturday',
+            'Sunday'
+        );
+    END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS "style" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "active" BOOLEAN NOT NULL,
+    "name" VARCHAR(128) NOT NULL,
+    "icon" TEXT NOT NULL,
+    "image" TEXT,
+    "color" VARCHAR(16) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "restaurant_type" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "active" BOOLEAN NOT NULL,
+    "name" VARCHAR(128) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "restaurant" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "active" BOOLEAN NOT NULL,
+    "name" VARCHAR(128) NOT NULL,
+    "restaurant_type_id" VARCHAR(36) NOT NULL,
+    "style_id" VARCHAR(36) NOT NULL,
+    "address" VARCHAR(256) NOT NULL,
+    "nip" VARCHAR(32) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "discount" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "active" BOOLEAN NOT NULL,
+    "restaurant_id" VARCHAR(36) NOT NULL,
+    "name" VARCHAR(128) NOT NULL,
+    "type" discount_type NOT NULL,
+    "available_time_id" VARCHAR(36),
+    "value" FLOAT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "item_type" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "active" BOOLEAN NOT NULL,
+    "restaurant_id" VARCHAR(36) NOT NULL,
+    "name" VARCHAR(128) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "ptu_type" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "name" VARCHAR(128) NOT NULL,
+    "percent" FLOAT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "addition" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "active" BOOLEAN NOT NULL,
+    "product_name_id" VARCHAR(36),
+    "restaurant_id" VARCHAR(36) NOT NULL,
+    "item_type_id" VARCHAR(36),
+    "price" FLOAT NOT NULL,
+    "weight" VARCHAR(32) NOT NULL,
+    "ptu_type_id" VARCHAR(36) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "item" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "active" BOOLEAN NOT NULL,
+    "price" FLOAT NOT NULL,
+    "product_specialty_list" product_specialty_list NULL,
+    "sale_specialty_list" sale_specialty_list NULL,
+    "ptu_type_id" VARCHAR(36) NOT NULL,
+    "restaurant_id" VARCHAR(36) NOT NULL,
+    "discount_id" VARCHAR(36),
+    "item_type_id" VARCHAR(36),
+    "available_time_id" VARCHAR(36),
+    "description" VARCHAR(512),
+    "image" TEXT DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "available_time" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "active" BOOLEAN NOT NULL,
+    "name" VARCHAR(128) NOT NULL,
+    "restaurant_id" VARCHAR(36) NOT NULL,
+    "start_time" TIME DEFAULT NULL,
+    "end_time" TIME DEFAULT NULL,
+    "day_list" day_list NULL,
+    "start_date" DATE DEFAULT NULL,
+    "end_date" DATE DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "work_time" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "user_id" VARCHAR(36) NOT NULL,
+    "restaurant_id" VARCHAR(36) NOT NULL,
+    "start_time" TIMESTAMP NOT NULL,
+    "end_time" TIMESTAMP,
+    "full_time" FLOAT
+);
+
+CREATE TABLE IF NOT EXISTS "hall_table" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "active" BOOLEAN NOT NULL,
+    "restaurant_id" VARCHAR(36) NOT NULL,
+    "number" INT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "product_name" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "active" BOOLEAN NOT NULL,
+    "on_stock" BOOLEAN NOT NULL,
+    "restaurant_id" VARCHAR(36) NOT NULL,
+    "name" VARCHAR(128) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "product" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "item_id" VARCHAR(36) NOT NULL,
+    "product_name_id" VARCHAR(36),
+    "weight" VARCHAR(32) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "pack" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "active" BOOLEAN NOT NULL,
+    "discount_id" VARCHAR(36) NOT NULL,
+    "available_time_id" VARCHAR(36),
+    "restaurant_id" VARCHAR(36) NOT NULL,
+    "description" VARCHAR(512),
+    "name" VARCHAR(128) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "pack_item" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "active" BOOLEAN NOT NULL,
+    "pack_id" VARCHAR(36) NOT NULL,
+    "item_id" VARCHAR(36) NOT NULL,
+    "amount" INT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "payment_type" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "active" BOOLEAN,
+    "name" TEXT NOT NULL,
+    "restaurant_id" VARCHAR(36)
+);
+
+CREATE TABLE IF NOT EXISTS "display" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "restaurant_id" VARCHAR(36) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "display_item_type" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "display_id" VARCHAR(36) NOT NULL,
+    "item_type_id" VARCHAR(36) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "bill" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "restaurant_id" VARCHAR(36) NOT NULL,
+    "order_status" order_status NOT NULL,
+    "user_id" VARCHAR(36),
+    "discount_id" VARCHAR(36) NULL,
+    "payment_type_id" VARCHAR(36),
+    "client_nip" VARCHAR(36) NOT NULL,
+    "final_price" FLOAT NOT NULL,
+    "final_ptu" FLOAT NOT NULL,
+    "bill_number" VARCHAR(32) NOT NULL,
+    "cash_register_number" VARCHAR(32) NOT NULL,
+    "hall_table_id" VARCHAR(36),
+    "order_date" TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "bill_item" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "ready_status" ready_status NOT NULL,
+    "pack_id" VARCHAR(36),
+    "bill_id" VARCHAR(36) NOT NULL,
+    "item_id" VARCHAR(36) NOT NULL,
+    "is_discount" BOOLEAN NOT NULL,
+    "description" VARCHAR(512),
+    "amount" INT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "bill_item_addition" (
+    "id" VARCHAR(36) PRIMARY KEY,
+    "bill_item_id" VARCHAR(36) NOT NULL,
+    "addition_id" VARCHAR(36) NOT NULL,
+    "amount" INT NOT NULL
+);
+
+-- Add foreign keys
+
+ALTER TABLE "discount" ADD FOREIGN KEY ("restaurant_id") REFERENCES "restaurant" ("id");
+ALTER TABLE "discount" ADD FOREIGN KEY ("available_time_id") REFERENCES "available_time" ("id");
+ALTER TABLE "addition" ADD FOREIGN KEY ("product_name_id") REFERENCES "product_name" ("id");
+ALTER TABLE "addition" ADD FOREIGN KEY ("restaurant_id") REFERENCES "restaurant" ("id");
+ALTER TABLE "addition" ADD FOREIGN KEY ("item_type_id") REFERENCES "item_type" ("id");
+ALTER TABLE "addition" ADD FOREIGN KEY ("ptu_type_id") REFERENCES "ptu_type" ("id");
+ALTER TABLE "item" ADD FOREIGN KEY ("ptu_type_id") REFERENCES "ptu_type" ("id");
+ALTER TABLE "item" ADD FOREIGN KEY ("restaurant_id") REFERENCES "restaurant" ("id");
+ALTER TABLE "item" ADD FOREIGN KEY ("discount_id") REFERENCES "discount" ("id");
+ALTER TABLE "item" ADD FOREIGN KEY ("item_type_id") REFERENCES "item_type" ("id");
+ALTER TABLE "item" ADD FOREIGN KEY ("available_time_id") REFERENCES "available_time" ("id");
+ALTER TABLE "available_time" ADD FOREIGN KEY ("restaurant_id") REFERENCES "restaurant" ("id");
+ALTER TABLE "work_time" ADD FOREIGN KEY ("restaurant_id") REFERENCES "restaurant" ("id");
+ALTER TABLE "hall_table" ADD FOREIGN KEY ("restaurant_id") REFERENCES "restaurant" ("id");
+ALTER TABLE "product_name" ADD FOREIGN KEY ("restaurant_id") REFERENCES "restaurant" ("id");
+ALTER TABLE "product" ADD FOREIGN KEY ("item_id") REFERENCES "item" ("id");
+ALTER TABLE "product" ADD FOREIGN KEY ("product_name_id") REFERENCES "product_name" ("id");
+ALTER TABLE "pack" ADD FOREIGN KEY ("discount_id") REFERENCES "discount" ("id");
+ALTER TABLE "pack" ADD FOREIGN KEY ("available_time_id") REFERENCES "available_time" ("id");
+ALTER TABLE "pack" ADD FOREIGN KEY ("restaurant_id") REFERENCES "restaurant" ("id");
+ALTER TABLE "pack_item" ADD FOREIGN KEY ("pack_id") REFERENCES "pack" ("id");
+ALTER TABLE "pack_item" ADD FOREIGN KEY ("item_id") REFERENCES "item" ("id");
+ALTER TABLE "payment_type" ADD FOREIGN KEY ("restaurant_id") REFERENCES "restaurant" ("id");
+ALTER TABLE "display" ADD FOREIGN KEY ("restaurant_id") REFERENCES "restaurant" ("id");
+ALTER TABLE "display_item_type" ADD FOREIGN KEY ("display_id") REFERENCES "display" ("id");
+ALTER TABLE "display_item_type" ADD FOREIGN KEY ("item_type_id") REFERENCES "item_type" ("id");
+ALTER TABLE "bill" ADD FOREIGN KEY ("restaurant_id") REFERENCES "restaurant" ("id");
+ALTER TABLE "bill" ADD FOREIGN KEY ("discount_id") REFERENCES "discount" ("id");
+ALTER TABLE "bill" ADD FOREIGN KEY ("payment_type_id") REFERENCES "payment_type" ("id");
+ALTER TABLE "bill" ADD FOREIGN KEY ("hall_table_id") REFERENCES "hall_table" ("id");
+ALTER TABLE "bill_item" ADD FOREIGN KEY ("pack_id") REFERENCES "pack" ("id");
+ALTER TABLE "bill_item" ADD FOREIGN KEY ("bill_id") REFERENCES "bill" ("id");
+ALTER TABLE "bill_item" ADD FOREIGN KEY ("item_id") REFERENCES "item" ("id");
+ALTER TABLE "bill_item_addition" ADD FOREIGN KEY ("bill_item_id") REFERENCES "bill_item" ("id");
+ALTER TABLE "bill_item_addition" ADD FOREIGN KEY ("addition_id") REFERENCES "addition" ("id");
+
+
+--------------------------Functions----------------------------------
+
+
+CREATE OR REPLACE FUNCTION CalculateDiscountedPrice(
+    price FLOAT,
+    discount_type TEXT,
+    discount_value FLOAT,
+    available_time_id CHAR(36)
+) RETURNS FLOAT AS $$
+DECLARE
+    query_datetime TIMESTAMP := CURRENT_TIMESTAMP;
+BEGIN
+    IF available_time_id IS NULL OR EXISTS (
+        SELECT 1
+        FROM available_time
+        WHERE available_time.id = available_time_id
+            AND query_datetime::date BETWEEN available_time.start_date AND available_time.end_date
+            AND query_datetime::time BETWEEN available_time.start_time AND available_time.end_time
+            AND available_time.day_list::text LIKE '%' || EXTRACT(ISODOW FROM query_datetime) || '%'
+    ) THEN
+        IF discount_type = 'percent' THEN
+            RETURN price - (price * discount_value / 100);
+        ELSIF discount_type = 'fixed' THEN
+            RETURN price - discount_value;
+        END IF;
+    END IF;
+    RETURN price;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION CalculatePackPrice(
+        pack_id CHAR(36),
+        available_time_id CHAR(36),
+        discount_type text,
+        discount_value FLOAT
+    ) RETURNS FLOAT AS $$
+DECLARE full_price FLOAT DEFAULT 0.0;
+BEGIN
+SELECT SUM(item.price * pack_item.amount) INTO full_price
+FROM pack_item
+    JOIN item ON item.id = pack_item.item_id
+WHERE pack_item.pack_id = pack_id;
+full_price := CalculateDiscountedPrice(
+    full_price,
+    discount_type,
+    discount_value,
+    available_time_id,
+    CURRENT_TIMESTAMP
+);
+RETURN full_price;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION CheckItemOnStock(_item_id CHAR(36)) RETURNS BOOLEAN AS $$
+DECLARE select_statement TEXT;
+result BOOLEAN := TRUE;
+value BOOLEAN;
+BEGIN
+SET select_statement = 'SELECT on_stock FROM product_name pn
+        JOIN product p on pn.id = p.product_name_id
+        WHERE p.item_id = _item_id';
+
+FOR value IN EXECUTE select_statement LOOP
+IF value = FALSE THEN result := FALSE;
+EXIT;
+END IF;
+END LOOP;
+
+RETURN result;
+END;
+$$ LANGUAGE plpgsql;
+
+
+--------------------------Items----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE ItemViewByRestaurantItemTypeActiveAvailableTimeName(
+    IN _restaurant_id CHAR(36),
+    IN _item_type_id CHAR(36),
+    IN _active BOOLEAN,
+    IN _search VARCHAR(255),
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    _query_datetime TIMESTAMP := CURRENT_TIMESTAMP;
+BEGIN
+    SELECT item.id AS "id",
+        product_name.name AS "name",
+        item.description AS "item_description",
+        item.product_specialty_list AS "product_specialty_list",
+        item.sale_specialty_list AS "sale_specialty_list",
+        item.price AS "item_price",
+        item.image AS "item_image",
+        item.discount_id AS "discount_id",
+        CalculateDiscountedPrice(
+            item.price,
+            discount.type,
+            discount.value,
+            discount.available_time_id,
+            _query_datetime
+        ) AS "price_after_discount",
+        ptu_type.id AS "ptu_type_id",
+        "ptu_type".name AS "ptu_type_name",
+        CheckItemOnStock(item.id) AS "on_stock"
+    FROM item
+        INNER JOIN product ON item.id = product.item_id
+        INNER JOIN product_name ON product.product_name_id = product_name.id
+        INNER JOIN ptu_type ON item.ptu_type_id = ptu_type.id
+        LEFT JOIN discount ON item.discount_id = discount.id
+    WHERE item.restaurant_id = _restaurant_id
+        AND item.item_type_id = _item_type_id
+        AND item.active = _active
+        AND (
+            product_name.name LIKE '%' || _search || '%'
+            OR item.description LIKE '%' || _search || '%'
+        )
+        AND (
+            item.available_time_id IS NULL
+            OR EXISTS(
+                SELECT 1
+                FROM available_time
+                WHERE available_time.id = item.available_time_id
+                    AND _query_datetime::date BETWEEN available_time.start_date AND available_time.end_date
+                    AND _query_datetime::time BETWEEN available_time.start_time AND available_time.end_time
+                    AND available_time.day_list::text LIKE '%' || EXTRACT(
+                        ISODOW
+                        FROM _query_datetime
+                    ) || '%'
+            )
+        )
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountItemViewByRestaurantItemTypeActiveAvailableTimeName(
+    IN _restaurant_id CHAR(36),
+    IN _item_type_id CHAR(36),
+    IN _active BOOLEAN,
+    IN _search VARCHAR(255)
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    _query_datetime TIMESTAMP := CURRENT_TIMESTAMP;
+BEGIN
+    SELECT COUNT(*)
+    FROM item
+        INNER JOIN product ON item.id = product.item_id
+        INNER JOIN product_name ON product.product_name_id = product_name.id
+        INNER JOIN ptu_type ON item.ptu_type_id = ptu_type.id
+        LEFT JOIN discount ON item.discount_id = discount.id
+    WHERE item.restaurant_id = _restaurant_id
+        AND item.item_type_id = _item_type_id
+        AND item.active = _active
+        AND (
+            product_name.name LIKE '%' || _search || '%'
+            OR item.description LIKE '%' || _search || '%'
+        )
+        AND (
+            item.available_time_id IS NULL
+            OR EXISTS(
+                SELECT 1
+                FROM available_time
+                WHERE available_time.id = item.available_time_id
+                    AND _query_datetime::date BETWEEN available_time.start_date AND available_time.end_date
+                    AND _query_datetime::time BETWEEN available_time.start_time AND available_time.end_time
+                    AND available_time.day_list::text LIKE '%' || EXTRACT(
+                        ISODOW
+                        FROM _query_datetime
+                    ) || '%'
+            )
+        );
+END;
+$$;
+
+
+-- DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeactivateItem(_item_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE item
+    SET active = false
+    WHERE id = _item_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ActivateItem(_item_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE item
+    SET active = true
+    WHERE id = _item_id;
+END;
+$$;
+
+
+--------------------------Packs----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE PackViewByRestaurantActiveAvailableTimeName(
+    IN _restaurant_id CHAR(36),
+    IN _active BOOLEAN,
+    IN _search VARCHAR(255),
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    _query_datetime TIMESTAMP := CURRENT_TIMESTAMP;
+BEGIN
+    SELECT p.id AS "id",
+        p.name AS "name",
+        d.id AS "discount_id",
+        d.name AS "discount_name",
+        p.description AS "description",
+        CalculatePackPrice(p.id, d.available_time_id, d.type, d.value) AS "pack_price"
+    FROM pack AS p
+        LEFT JOIN discount AS d ON d.id = p.discount_id
+    WHERE p.restaurant_id = _restaurant_id
+        AND p.active = _active
+        AND (
+            p.name LIKE CONCAT('%', _search, '%')
+            OR d.name LIKE CONCAT('%', _search, '%')
+            OR p.description LIKE CONCAT('%', _search, '%')
+        )
+        AND (
+            p.available_time_id IS NULL
+            OR EXISTS(
+                SELECT 1
+                FROM available_time
+                WHERE available_time.id = p.available_time_id
+                    AND _query_datetime::date BETWEEN available_time.start_date AND available_time.end_date
+                    AND _query_datetime::time BETWEEN available_time.start_time AND available_time.end_time
+                    AND available_time.day_list::text LIKE '%' || EXTRACT(
+                        ISODOW
+                        FROM _query_datetime
+                    ) || '%'
+            )
+        )
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountPackViewByRestaurantActiveAvailableTimeName(
+    IN _restaurant_id CHAR(36),
+    IN _active BOOLEAN,
+    IN _search VARCHAR(255)
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    _query_datetime TIMESTAMP := CURRENT_TIMESTAMP;
+BEGIN
+    SELECT COUNT(*)
+    FROM pack AS p
+        LEFT JOIN discount AS d ON d.id = p.discount_id
+    WHERE p.restaurant_id = _restaurant_id
+        AND p.active = _active
+        AND (
+            p.name LIKE CONCAT('%', _search, '%')
+            OR d.name LIKE CONCAT('%', _search, '%')
+            OR p.description LIKE CONCAT('%', _search, '%')
+        )
+        AND (
+            p.available_time_id IS NULL
+            OR EXISTS(
+                SELECT 1
+                FROM available_time
+                WHERE available_time.id = p.available_time_id
+                    AND _query_datetime::date BETWEEN available_time.start_date AND available_time.end_date
+                    AND _query_datetime::time BETWEEN available_time.start_time AND available_time.end_time
+                    AND available_time.day_list::text LIKE '%' || EXTRACT(
+                        ISODOW
+                        FROM _query_datetime
+                    ) || '%'
+            )
+        );
+END;
+$$;
+
+
+-- DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeactivatePack(_pack_id VARCHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE pack
+    SET active = false
+    WHERE id = _pack_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ActivatePack(_pack_id VARCHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE pack
+    SET active = true
+    WHERE id = _pack_id;
+END;
+$$;
+
+
+--------------------------Discounts----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE DiscountViewByRestaurantTypeActiveAvailableTimeNameValue(
+    IN _restaurant_id CHAR(36),
+    IN _type discount_type,
+    IN _active BOOLEAN,
+    IN _search VARCHAR(255),
+    IN _value FLOAT,
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    _query_datetime TIMESTAMP := CURRENT_TIMESTAMP;
+BEGIN
+    SELECT d.id AS "id",
+        d.name AS "name",
+        d.type AS "type",
+        d.value AS "value"
+    FROM discount AS d
+    WHERE d.restaurant_id = _restaurant_id
+        AND d.active = _active
+        AND d.name LIKE CONCAT('%', _search, '%')
+        AND (
+            _type IS NULL
+            OR d.type = _type
+        )
+        AND (
+            _value IS NULL
+            OR d.value = _value
+        )
+        AND (
+            d.available_time_id IS NULL
+            OR EXISTS (
+                SELECT 1
+                FROM available_time
+                WHERE available_time.id = d.available_time_id
+                    AND _query_datetime::date BETWEEN available_time.start_date AND available_time.end_date
+                    AND _query_datetime::time BETWEEN available_time.start_time AND available_time.end_time
+                    AND available_time.day_list::text LIKE '%' || EXTRACT(
+                        ISODOW
+                        FROM _query_datetime
+                    ) || '%'
+            )
+        )
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountDiscountViewByRestaurantTypeActiveAvailableTimeNameValue(
+    IN _restaurant_id CHAR(36),
+    IN _type discount_type,
+    IN _active BOOLEAN,
+    IN _search VARCHAR(255),
+    IN _value FLOAT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    _query_datetime TIMESTAMP := CURRENT_TIMESTAMP;
+BEGIN
+    SELECT COUNT(*)
+    FROM discount AS d
+    WHERE d.restaurant_id = _restaurant_id
+        AND d.active = _active
+        AND d.name LIKE CONCAT('%', _search, '%')
+        AND (
+            _type IS NULL
+            OR d.type = _type
+        )
+        AND (
+            _value IS NULL
+            OR d.value = _value
+        )
+        AND (
+            d.available_time_id IS NULL
+            OR EXISTS (
+                SELECT 1
+                FROM available_time
+                WHERE available_time.id = d.available_time_id
+                    AND _query_datetime::date BETWEEN available_time.start_date AND available_time.end_date
+                    AND _query_datetime::time BETWEEN available_time.start_time AND available_time.end_time
+                    AND available_time.day_list::text LIKE '%' || EXTRACT(
+                        ISODOW
+                        FROM _query_datetime
+                    ) || '%'
+            )
+        );
+END;
+$$;
+
+
+-- DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeactivateDiscount(p_discount_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE discount
+    SET active = false
+    WHERE id = p_discount_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ActivateDiscount(p_discount_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE discount
+    SET active = true
+    WHERE id = p_discount_id;
+END;
+$$;
+
+
+--------------------------Restaurant Types----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE ViewRestaurantTypes(
+    IN _active BOOLEAN,
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT *
+    FROM restaurant_type
+    WHERE active = _active
+    ORDER BY id
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountRestaurantTypesByActiveStatus(
+    IN _active BOOLEAN,
+    OUT _count INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    INTO _count
+    FROM restaurant_type
+    WHERE active = _active;
+END;
+$$;
+
+
+-- DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeactivateRestaurantType(
+    IN _restaurant_type_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE restaurant_type
+    SET active = false
+    WHERE id = _restaurant_type_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ActivateRestaurantType(
+    IN _restaurant_type_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE restaurant_type
+    SET active = true
+    WHERE id = _restaurant_type_id;
+END;
+$$;
+
+
+--------------------------Restaurants----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE ViewRestaurants(
+    IN _active BOOLEAN,
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT *
+    FROM restaurant
+    WHERE active = _active
+    ORDER BY id
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountRestaurantsByActiveStatus(
+    IN _active BOOLEAN
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM restaurant
+    WHERE active = _active;
+END;
+$$;
+
+
+-- DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeactivateRestaurant(
+    IN _restaurant_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE restaurant
+    SET active = false
+    WHERE id = _restaurant_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ActivateRestaurant(
+    IN _restaurant_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE restaurant
+    SET active = true
+    WHERE id = _restaurant_id;
+END;
+$$;
+
+
+--------------------------Item Types----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE ItemTypeViewByRestaurantNameActive(
+    IN _restaurant_id CHAR(36),
+    IN _active BOOLEAN,
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT it.id AS "id",
+        it.name AS "name"
+    FROM item_type AS it
+    WHERE it.restaurant_id = _restaurant_id
+        AND it.active = _active
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountItemTypeByRestaurantNameActive(
+    IN _restaurant_id CHAR(36),
+    IN _active BOOLEAN
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM item_type AS it
+    WHERE it.restaurant_id = _restaurant_id
+        AND it.active = _active;
+END;
+$$;
+
+
+--DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeactivateItemType(p_item_type_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE item_type
+    SET active = false
+    WHERE id = p_item_type_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ActivateItemType(p_item_type_id CHAR(36))
+ LANGUAGE plpgsql
+ AS $$
+ BEGIN
+     UPDATE item_type
+     SET active = true
+     WHERE id = p_item_type_id;
+ END;
+ $$;
+
+
+--------------------------Pack Items----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE PackItemsViewByPackItemActive(
+    IN _active BOOLEAN,
+    IN _pack_id CHAR(36),
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT pi.id AS "id",
+        pi.name AS "name",
+        p.id AS "pack_id",
+        p.name AS "pack_name",
+        i.id AS "item_id",
+        i.name AS "item_name"
+    FROM pack_item AS pi
+        LEFT JOIN pack p ON p.id = pi.pack_id
+        LEFT JOIN item i ON i.id = pi.item_id
+    WHERE pi.pack_id = _pack_id
+        AND pi.active = _active
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountPackItemsByPackItemActive(
+    IN _active BOOLEAN,
+    IN _pack_id CHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM pack_item AS pi
+        LEFT JOIN pack p ON p.id = pi.pack_id
+        LEFT JOIN item i ON i.id = pi.item_id
+    WHERE pi.pack_id = _pack_id
+        AND pi.active = _active;
+END;
+$$;
+
+
+-- DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeactivatePackItem(p_pack_item_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE pack_item
+    SET active = false
+    WHERE id = p_pack_item_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ActivatePackItem(p_pack_item_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE pack_item
+    SET active = true
+    WHERE id = p_pack_item_id;
+END;
+$$;
+
+
+--------------------------ptu Types----------------------------------
+
+
+--------------------------Additions----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE AdditionViewByRestaurantItemTypeActiveAvailableTimeAndName(
+    IN _restaurant_id CHAR(36),
+    IN _item_type_id CHAR(36),
+    IN _active bool,
+    IN _search VARCHAR(255),
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    _query_datetime TIMESTAMP := CURRENT_TIMESTAMP;
+BEGIN
+    SELECT addition.id AS "id",
+        product_name.name AS "name",
+        addition.price AS "price",
+        "ptu_type".id AS "ptu_type_id",
+        "ptu_type".name AS "ptu_type_name",
+        "ptu_type".percent AS "ptu_type_percent",
+        "product_name".on_stock AS "on_stock"
+    FROM addition
+        INNER JOIN product ON addition.id = product.item_id
+        INNER JOIN product_name ON product.product_name_id = product_name.id
+        INNER JOIN "ptu_type" ON addition."ptu_type_id" = "ptu_type".id
+    WHERE addition.restaurant_id = _restaurant_id
+        AND addition.item_type_id = _item_type_id
+        AND addition.active = _active
+        AND (product_name.name LIKE '%' || _search || '%')
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountAdditionViewByRestaurantItemTypeActiveAvailableTimeAndName(
+    IN _restaurant_id CHAR(36),
+    IN _item_type_id CHAR(36),
+    IN _active bool,
+    IN _search VARCHAR(255)
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    _query_datetime TIMESTAMP := CURRENT_TIMESTAMP;
+BEGIN
+    SELECT COUNT(*)
+    FROM addition
+        INNER JOIN product ON addition.id = product.item_id
+        INNER JOIN product_name ON product.product_name_id = product_name.id
+        INNER JOIN "ptu_type" ON addition."ptu_type_id" = "ptu_type".id
+    WHERE addition.restaurant_id = _restaurant_id
+        AND addition.item_type_id = _item_type_id
+        AND addition.active = _active
+        AND (product_name.name LIKE '%' || _search || '%');
+END;
+$$;
+
+
+-- DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeactivateAddition(_addition_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE addition
+    SET active = false
+    WHERE id = _addition_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ActivateAddition(_addition_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE addition
+    SET active = true
+    WHERE id = _addition_id;
+END;
+$$;
+
+
+--------------------------Available Time----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE ViewAvailableTimeByRestaurantId(
+    IN _restaurant_id CHAR(36),
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT *
+    FROM available_time
+    WHERE restaurant_id = _restaurant_id
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountAvailableTimeByRestaurantId(
+    IN _restaurant_id CHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM available_time
+    WHERE restaurant_id = _restaurant_id;
+END;
+$$;
+
+
+-- DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeactivateAvailableTime(_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE available_time
+    SET active = false
+    WHERE id = _id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ActivateAvailableTime(_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE available_time
+    SET active = true
+    WHERE id = _id;
+END;
+$$;
+
+
+--------------------------Styles----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE FUNCTION public.viewstyles(
+    _active boolean,
+    _limit integer,
+    _offset integer,
+    _sortfield character varying,
+    _sortdirection character varying,
+    _search character varying)
+RETURNS TABLE (
+    id VARCHAR(36),
+    active BOOLEAN,
+    name VARCHAR(128),
+    icon TEXT,
+    image TEXT,
+    color VARCHAR(16)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY EXECUTE FORMAT('
+        SELECT *
+        FROM style
+        WHERE active = %L
+        AND name ILIKE %L
+        ORDER BY %I %s
+        LIMIT %s OFFSET %s;
+    ', _active::text, '%' || _search || '%', _sortfield, _sortdirection, _limit::text, _offset::text);
+END;
+$$;
+
+
+ALTER FUNCTION public.viewstyles(boolean, integer, integer, character varying, character varying, character varying)
+    OWNER TO postgres;
+
+
+CREATE OR REPLACE FUNCTION public.countstylesbyactivestatus(
+    IN _active boolean,
+    IN _search character varying,
+    OUT _count integer
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    EXECUTE FORMAT('
+        SELECT COUNT(*)
+        FROM style
+        WHERE active = %L
+        AND name ILIKE %L;
+    ', _active::text, '%' || _search || '%')
+    INTO _count;
+END;
+$$;
+
+ALTER FUNCTION public.countstylesbyactivestatus(boolean, character varying)
+    OWNER TO postgres;
+
+
+
+-- DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeactivateStyle(
+    IN _style_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE style
+    SET active = false
+    WHERE id = _style_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ActivateStyle(
+    IN _style_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE style
+    SET active = true
+    WHERE id = _style_id;
+END;
+$$;
+
+
+--------------------------Hall Table----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE ViewHallTableByRestaurantIsActive(
+    IN _restaurant_id CHAR(36),
+    IN _active BOOLEAN,
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT *
+    FROM hall_table
+    WHERE restaurant_id = _restaurant_id
+        AND active = _active
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountHallTableByRestaurantIsActive(
+    IN _restaurant_id CHAR(36),
+    IN _active BOOLEAN
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM hall_table
+    WHERE restaurant_id = _restaurant_id
+        AND active = _active;
+END;
+$$;
+
+
+-- DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeactivateHallTable(_hall_table_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE hall_table
+    SET active = false
+    WHERE id = _hall_table_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ActivateHallTable(_hall_table_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE hall_table
+    SET active = true
+    WHERE id = _hall_table_id;
+END;
+$$;
+
+
+--------------------------Work Time----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE ViewWorkTimeByRestaurantId(
+    IN _restaurant_id CHAR(36),
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT *
+    FROM work_time
+    WHERE restaurant_id = _restaurant_id
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountWorkTimeByRestaurantId(
+    IN _restaurant_id CHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM work_time
+    WHERE restaurant_id = _restaurant_id;
+END;
+$$;
+
+
+--------------------------Payment Types----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE ViewPaymentTypesByRestaurantAndStatus(
+    IN _restaurant_id CHAR(36),
+    IN _active BOOLEAN,
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT *
+    FROM payment_type
+    WHERE active = _active
+        AND restaurant_id = _restaurant_id
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+
+CREATE OR REPLACE PROCEDURE CountPaymentTypesByRestaurantAndStatus(
+    IN _restaurant_id CHAR(36),
+    IN _active BOOLEAN
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM payment_type
+    WHERE active = _active
+        AND restaurant_id = _restaurant_id;
+END;
+$$;
+
+
+--DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeactivatePaymentType(_payment_type_id VARCHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE payment_type
+    SET active = false
+    WHERE id = _payment_type_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ActivatePaymentType(_payment_type_id VARCHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE payment_type
+    SET active = true
+    WHERE id = _payment_type_id;
+END;
+$$;
+
+
+--------------------------Product Names----------------------------------
+
+
+-- GET PRODUCT NAME FOR ADMIN
+
+
+CREATE OR REPLACE PROCEDURE ProductNameViewByNameActive(
+    IN _search VARCHAR(128),
+    IN _active BOOLEAN,
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT *
+    FROM product_name
+    WHERE name ILIKE '%' || _search || '%'
+        AND active = _active
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountProductNameViewByNameActive(
+    IN _search VARCHAR(128),
+    IN _active BOOLEAN
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM product_name
+    WHERE name ILIKE '%' || _search || '%'
+        AND active = _active;
+END;
+$$;
+
+
+-- DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeactivateProductName(_product_name_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE product_name
+    SET active = false
+    WHERE id = _product_name_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ActivateProductName(_product_name_id CHAR(36))
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE product_name
+    SET active = true
+    WHERE id = _product_name_id;
+END;
+$$;
+
+
+--------------------------Products----------------------------------
+
+
+-- GET PRODUCTS FOR INFO
+
+
+CREATE OR REPLACE PROCEDURE ProductViewByItemName(
+    IN _item_id CHAR(36),
+    IN _search VARCHAR(128),
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT p.id AS "id", pn.name AS "product_name", p.weight AS "weight"
+    FROM product AS p
+        JOIN product_name AS pn ON p.product_name_id = pn.id
+    WHERE p.item_id = _item_id
+        AND pn.name ILIKE '%' || _search || '%'
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountProductViewByItemName(
+    IN _item_id CHAR(36),
+    IN _search VARCHAR(128)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM product AS p
+        JOIN product_name AS pn ON p.product_name_id = pn.id
+    WHERE p.item_id = _item_id
+        AND pn.name ILIKE '%' || _search || '%';
+END;
+$$;
+
+
+--------------------------Bills----------------------------------
+
+
+-- GET ALL FOR ADMIN
+
+
+CREATE OR REPLACE PROCEDURE BillViewByNameRestaurant(
+    IN _search TEXT,
+    IN _restaurant_id CHAR(36),
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT bill.id,
+        restaurant.name AS restaurant_name,
+        restaurant.address AS restaurant_address,
+        bill.status,
+        bill.user_id,
+        discount.name AS discount_name,
+        bill.client_nip,
+        bill.final_price,
+        bill.final_ptu,
+        bill.bill_number,
+        bill.cash_register_number,
+        hall_table.number AS hall_table_number,
+        payment_type.name AS payment_name,
+        bill.order_date
+    FROM bill
+        INNER JOIN restaurant ON bill.restaurant_id = restaurant.id
+        INNER JOIN discount ON bill.discount_id = discount.id
+        INNER JOIN hall_table ON bill.hall_table_id = hall_table.id
+        INNER JOIN payment_type ON bill.payment_type_id = payment_type.id
+    WHERE bill.restaurant_id = _restaurant_id
+        AND (
+            bill.name LIKE '%' || _search || '%'
+            OR CAST(bill.status AS TEXT) LIKE '%' || _search || '%'
+            OR CAST(bill.user_id AS TEXT) LIKE '%' || _search || '%'
+            OR discount.name LIKE '%' || _search || '%'
+            OR CAST(bill.client_nip AS TEXT) LIKE '%' || _search || '%'
+            OR CAST(bill.final_price AS TEXT) LIKE '%' || _search || '%'
+            OR CAST(bill.final_ptu AS TEXT) LIKE '%' || _search || '%'
+            OR bill.bill_number LIKE '%' || _search || '%'
+            OR bill.cash_register_number LIKE '%' || _search || '%'
+            OR CAST(hall_table.number AS TEXT) LIKE '%' || _search || '%'
+            OR payment_type.name LIKE '%' || _search || '%'
+        )
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountBillViewByNameRestaurant(
+    IN _search TEXT,
+    IN _restaurant_id CHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM bill
+        INNER JOIN restaurant ON bill.restaurant_id = restaurant.id
+        INNER JOIN discount ON bill.discount_id = discount.id
+        INNER JOIN hall_table ON bill.hall_table_id = hall_table.id
+        INNER JOIN payment_type ON bill.payment_type_id = payment_type.id
+    WHERE bill.restaurant_id = _restaurant_id
+        AND (
+            bill.name LIKE '%' || _search || '%'
+            OR CAST(bill.status AS TEXT) LIKE '%' || _search || '%'
+            OR CAST(bill.user_id AS TEXT) LIKE '%' || _search || '%'
+            OR discount.name LIKE '%' || _search || '%'
+            OR CAST(bill.client_nip AS TEXT) LIKE '%' || _search || '%'
+            OR CAST(bill.final_price AS TEXT) LIKE '%' || _search || '%'
+            OR CAST(bill.final_ptu AS TEXT) LIKE '%' || _search || '%'
+            OR bill.bill_number LIKE '%' || _search || '%'
+            OR bill.cash_register_number LIKE '%' || _search || '%'
+            OR CAST(hall_table.number AS TEXT) LIKE '%' || _search || '%'
+            OR payment_type.name LIKE '%' || _search || '%'
+        );
+END;
+$$;
+
+
+-- DELETE BILL
+
+
+CREATE OR REPLACE PROCEDURE DeleteBillAndRelatedItems(_bill_id CHAR(36)) LANGUAGE plpgsql AS $$ BEGIN
+DELETE FROM bill_item_addition
+WHERE bill_item_id IN (
+        SELECT id
+        FROM bill_item
+        WHERE bill_id = _bill_id
+    );
+DELETE FROM bill_item
+WHERE bill_id = _bill_id;
+DELETE FROM bill
+WHERE id = _bill_id;
+COMMIT;
+END;
+$$;
+
+
+-- APPLY DISCOUNT ON WHOLE BILL
+
+
+CREATE OR REPLACE PROCEDURE ApplyBillDiscountOnNonDiscountedItems(_bill_id CHAR(36)) LANGUAGE plpgsql AS $$
+DECLARE non_discounted_sum FLOAT;
+discount_type TEXT;
+discount_value FLOAT;
+available_time_id CHAR(36);
+discounted_sum FLOAT;
+BEGIN
+SELECT SUM(item_price * amount) INTO non_discounted_sum
+FROM bill_items
+WHERE bill_id = _bill_id
+    AND is_discounted = false;
+SELECT discount_type,
+    discount_value,
+    available_time_id INTO discount_type,
+    discount_value,
+    available_time_id
+FROM bills
+WHERE id = _bill_id;
+discounted_sum := CalculateDiscountedPrice(
+    non_discounted_sum,
+    discount_type,
+    discount_value,
+    available_time_id,
+    CURRENT_TIMESTAMP
+);
+UPDATE bills
+SET final_price = final_price - non_discounted_sum + discounted_sum
+WHERE id = _bill_id;
+COMMIT;
+END;
+$$;
+
+
+--------------------------Bill Items----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE BillItemByBill(
+    IN _bill_id CHAR(36),
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT bi.id AS "id",
+        it.name AS "item_name",
+        (
+            (
+                CalculateDiscountedPrice(
+                    it.price,
+                    d.type,
+                    d.value,
+                    d.available_time_id,
+                    CURRENT_TIMESTAMP
+                ) * bi.amount
+            ) + COALESCE(
+                (
+                    SELECT SUM((a.price * bia.amount))
+                    FROM bill_item_addition AS bia
+                        JOIN addition AS a ON bia.addition_id = a.id
+                    WHERE bia.bill_item_id = bi.id
+                ),
+                0
+            )
+        ) AS "final_price"
+    FROM bill_item AS bi
+        JOIN item AS it ON bi.item_id = it.id
+        JOIN discount AS d ON it.discount_id = d.id
+    WHERE bi.bill_id = _bill_id
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountBillItemByBill(
+    IN _bill_id CHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM bill_item AS bi
+        JOIN item AS it ON bi.item_id = it.id
+        JOIN discount AS d ON it.discount_id = d.id
+    WHERE bi.bill_id = _bill_id;
+END;
+$$;
+
+
+-- ADD BY PACK
+
+
+CREATE OR REPLACE PROCEDURE AddPackItemsToBill(_pack_id CHAR(36), _bill_id CHAR(36)) LANGUAGE plpgsql AS $$
+DECLARE pack_item RECORD;
+pack_discount_type TEXT;
+pack_discount_value FLOAT;
+discount_available_time_id CHAR(36);
+pack_total_price FLOAT;
+BEGIN
+SELECT discount.type,
+    discount.value,
+    discount.available_time_id INTO pack_discount_type,
+    pack_discount_value,
+    discount_available_time_id
+FROM pack
+    INNER JOIN discount ON pack.discount_id = discount.id
+WHERE pack.id = _pack_id;
+FOR pack_item IN
+SELECT *
+FROM pack_item
+WHERE pack_id = _pack_id LOOP
+INSERT INTO bill_item (
+        id,
+        bill_id,
+        item_id,
+        pack_id,
+        amount,
+        price,
+        final_price,
+        discount_id,
+        is_discounted,
+        created_date,
+        updated_date
+    )
+VALUES (
+        UUID_TO_BIN(UUID()),
+        _bill_id,
+        pack_item.item_id,
+        _pack_id,
+        pack_item.amount,
+        pack_item.price,
+        pack_item.final_price,
+        pack_item.discount_id,
+        pack_item.is_discounted,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    );
+END LOOP;
+SELECT SUM(price) INTO pack_total_price
+FROM bill_item
+WHERE bill_id = _bill_id
+    AND pack_id = _pack_id;
+pack_total_price := CalculateDiscountedPrice(
+    pack_total_price,
+    pack_discount_type,
+    pack_discount_value,
+    discount_available_time_id,
+    CURRENT_TIMESTAMP
+);
+UPDATE bill
+SET final_price = final_price + pack_total_price
+WHERE id = _bill_id;
+END;
+$$;
+
+
+--  UPDATE BY PACK
+
+
+CREATE OR REPLACE PROCEDURE UpdatePackAmountInBill(
+        _bill_id CHAR(36),
+        _pack_id CHAR(36),
+        _new_amount INT
+    ) LANGUAGE plpgsql AS $$
+DECLARE pack_discount_type TEXT;
+pack_discount_value FLOAT;
+discount_available_time_id CHAR(36);
+old_pack_price FLOAT;
+new_pack_price FLOAT;
+old_amount INT;
+BEGIN
+SELECT discount.type,
+    discount.value,
+    discount.available_time_id INTO pack_discount_type,
+    pack_discount_value,
+    discount_available_time_id
+FROM pack
+    INNER JOIN discount ON pack.discount_id = discount.id
+WHERE pack.id = _pack_id;
+SELECT SUM(price),
+    SUM(amount) INTO old_pack_price,
+    old_amount
+FROM bill_item
+WHERE bill_id = _bill_id
+    AND pack_id = _pack_id;
+old_pack_price := CalculateDiscountedPrice(
+    old_pack_price,
+    pack_discount_type,
+    pack_discount_value,
+    discount_available_time_id,
+    CURRENT_TIMESTAMP
+) * old_amount;
+UPDATE bill_item
+SET amount = _new_amount
+WHERE bill_id = _bill_id
+    AND pack_id = _pack_id;
+SELECT SUM(price) INTO new_pack_price
+FROM bill_item
+WHERE bill_id = _bill_id
+    AND pack_id = _pack_id;
+new_pack_price := CalculateDiscountedPrice(
+    new_pack_price,
+    pack_discount_type,
+    pack_discount_value,
+    discount_available_time_id,
+    CURRENT_TIMESTAMP
+) * _new_amount;
+UPDATE bill
+SET final_price = final_price - old_pack_price + new_pack_price
+WHERE id = _bill_id;
+END;
+$$;
+
+
+-- DELETE BY PACK
+
+
+CREATE OR REPLACE PROCEDURE DeletePackFromBill(_bill_id CHAR(36), _pack_id CHAR(36)) LANGUAGE plpgsql AS $$
+DECLARE pack_discount_type TEXT;
+pack_discount_value FLOAT;
+discount_available_time_id CHAR(36);
+pack_price FLOAT;
+addition_price FLOAT;
+pack_amount INT;
+BEGIN
+SELECT discount.typFe,
+    discount.value,
+    discount.available_time_id INTO pack_discount_type,
+    pack_discount_value,
+    discount_available_time_id
+FROM pack
+    INNER JOIN discount ON pack.discount_id = discount.id
+WHERE pack.id = _pack_id;
+SELECT SUM(price),
+    SUM(amount) INTO pack_price,
+    pack_amount
+FROM bill_item
+WHERE bill_id = _bill_id
+    AND pack_id = _pack_id;
+pack_price := CalculateDiscountedPrice(
+    pack_price,
+    pack_discount_type,
+    pack_discount_value,
+    discount_available_time_id,
+    CURRENT_TIMESTAMP
+) * pack_amount;
+UPDATE bill
+SET final_price = final_price - pack_price
+WHERE id = _bill_id;
+SELECT SUM(price) INTO addition_price
+FROM bill_item_addition
+WHERE bill_item_id IN (
+        SELECT id
+        FROM bill_item
+        WHERE bill_id = _bill_id
+            AND pack_id = _pack_id
+    );
+UPDATE bill
+SET final_price = final_price - addition_price
+WHERE id = _bill_id;
+DELETE FROM bill_item_addition
+WHERE bill_item_id IN (
+        SELECT id
+        FROM bill_item
+        WHERE bill_id = _bill_id
+            AND pack_id = _pack_id
+    );
+DELETE FROM bill_item
+WHERE bill_id = _bill_id
+    AND pack_id = _pack_id;
+END;
+$$;
+
+
+-- ADD
+
+
+CREATE OR REPLACE PROCEDURE AddBillItem(
+        _bill_id CHAR(36),
+        _item_id CHAR(36),
+        _amount INT
+    ) LANGUAGE plpgsql AS $$
+DECLARE item_price FLOAT;
+final_item_price FLOAT;
+discount_type TEXT;
+discount_value FLOAT;
+available_time_id CHAR(36);
+BEGIN
+SELECT item.price,
+    discount.type,
+    discount.value,
+    discount.available_time_id INTO item_price,
+    discount_type,
+    discount_value,
+    available_time_id
+FROM item
+    LEFT JOIN discount ON item.discount_id = discount.id
+WHERE item.id = _item_id;
+IF discount_type IS NOT NULL THEN item_price := CalculateDiscountedPrice(
+    item_price,
+    discount_type,
+    discount_value,
+    available_time_id,
+    CURRENT_TIMESTAMP
+);
+END IF;
+final_item_price := item_price * _amount;
+INSERT INTO bill_item (bill_id, item_id, amount, final_price)
+VALUES (
+        _bill_id,
+        _item_id,
+        _amount,
+        final_item_price
+    );
+UPDATE bill
+SET final_price = final_price + final_item_price
+WHERE id = _bill_id;
+END;
+$$;
+
+
+-- UPDATE
+
+
+CREATE OR REPLACE PROCEDURE UpdateBillItemAmount(
+        _bill_id CHAR(36),
+        _item_id CHAR(36),
+        _new_amount INT
+    ) LANGUAGE plpgsql AS $$
+DECLARE item_price FLOAT;
+old_final_price FLOAT;
+new_final_price FLOAT;
+discount_type TEXT;
+discount_value FLOAT;
+available_time_id CHAR(36);
+old_amount INT;
+BEGIN
+SELECT bill_item.final_price,
+    bill_item.amount,
+    item.price,
+    discount.type,
+    discount.value,
+    discount.available_time_id INTO old_final_price,
+    old_amount,
+    item_price,
+    discount_type,
+    discount_value,
+    available_time_id
+FROM bill_item
+    JOIN item ON bill_item.item_id = item.id
+    LEFT JOIN discount ON item.discount_id = discount.id
+WHERE bill_item.bill_id = _bill_id
+    AND bill_item.item_id = _item_id;
+IF discount_type IS NOT NULL THEN item_price := CalculateDiscountedPrice(
+    item_price,
+    discount_type,
+    discount_value,
+    available_time_id,
+    CURRENT_TIMESTAMP
+);
+END IF;
+old_final_price := old_final_price * old_amount;
+new_final_price := item_price * _new_amount;
+UPDATE bill_item
+SET amount = _new_amount,
+    final_price = new_final_price
+WHERE bill_id = _bill_id
+    AND item_id = _item_id;
+UPDATE bill
+SET final_price = final_price - old_final_price + new_final_price
+WHERE id = _bill_id;
+END;
+$$;
+
+
+--DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeleteBillItem(_bill_id CHAR(36), _item_id CHAR(36)) LANGUAGE plpgsql AS $$
+DECLARE item_final_price FLOAT;
+item_price FLOAT;
+discount_type TEXT;
+discount_value FLOAT;
+available_time_id CHAR(36);
+item_amount INT;
+BEGIN
+SELECT price,
+    discount_type,
+    discount_value,
+    available_time_id,
+    amount INTO item_price,
+    discount_type,
+    discount_value,
+    available_time_id,
+    item_amount
+FROM bill_item
+WHERE bill_id = _bill_id
+    AND item_id = _item_id;
+item_final_price := CalculateDiscountedPrice(
+    item_price,
+    discount_type,
+    discount_value,
+    available_time_id,
+    CURRENT_TIMESTAMP
+);
+item_final_price := item_final_price * item_amount;
+DELETE FROM bill_item_addition
+WHERE bill_id = _bill_id
+    AND item_id = _item_id;
+DELETE FROM bill_item
+WHERE bill_id = _bill_id
+    AND item_id = _item_id;
+UPDATE bill
+SET final_price = final_price - item_final_price
+WHERE id = _bill_id;
+END;
+$$;
+
+
+-- TRIGGER FOR SET DISCOUNT
+
+
+CREATE OR REPLACE FUNCTION set_discounted_flag() RETURNS TRIGGER AS $$ BEGIN IF (NEW.discount_id IS NOT NULL) THEN
+UPDATE bill_item
+SET is_discount = true
+WHERE id = NEW.id;
+ELSE IF EXISTS (
+    SELECT 1
+    FROM pack
+    WHERE id = NEW.pack_id
+        AND discount_id IS NOT NULL
+) THEN
+UPDATE bill_item
+SET is_discount = true
+WHERE id = NEW.id;
+END IF;
+END IF;
+RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER update_discounted_flag BEFORE
+INSERT
+    OR
+UPDATE ON bill_item FOR EACH ROW EXECUTE PROCEDURE set_discounted_flag();
+
+
+--------------------------Bill Item Additions----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE BillItemAdditionViewByBill(
+    IN _bill_item_id CHAR(36),
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT bia.id AS "id",
+        a.name AS "addition_name",
+        bia.amount AS "amount",
+        (a.price * bia.amount) AS "addition_price"
+    FROM bill_item_addition AS bia
+        JOIN addition AS a ON bia.addition_id = a.id
+    WHERE bia.bill_item_id = _bill_item_id
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountBillItemAdditionViewByBill(
+    IN _bill_item_id CHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM bill_item_addition AS bia
+        JOIN addition AS a ON bia.addition_id = a.id
+    WHERE bia.bill_item_id = _bill_item_id;
+END;
+$$;
+
+
+-- ADD
+
+
+CREATE OR REPLACE PROCEDURE AddBillItemAddition(
+        _bill_id CHAR(36),
+        _item_id CHAR(36),
+        _addition_id CHAR(36),
+        _addition_price FLOAT
+    ) LANGUAGE plpgsql AS $$ BEGIN
+INSERT INTO bill_item_addition(bill_id, item_id, addition_id, addition_price)
+VALUES(
+        _bill_id,
+        _item_id,
+        _addition_id,
+        _addition_price
+    );
+UPDATE bill
+SET final_price = final_price + _addition_price
+WHERE id = _bill_id;
+END;
+$$;
+
+
+-- UPDATE
+
+
+CREATE OR REPLACE PROCEDURE UpdateBillItemAdditionAmount(
+        _bill_id CHAR(36),
+        _item_id CHAR(36),
+        _addition_id CHAR(36),
+        _new_amount INT
+    ) LANGUAGE plpgsql AS $$
+DECLARE _old_amount INT;
+_addition_price FLOAT;
+BEGIN
+SELECT amount,
+    addition_price INTO _old_amount,
+    _addition_price
+FROM bill_item_addition
+WHERE bill_id = _bill_id
+    AND item_id = _item_id
+    AND addition_id = _addition_id;
+UPDATE bill_item_addition
+SET amount = _new_amount
+WHERE bill_id = _bill_id
+    AND item_id = _item_id
+    AND addition_id = _addition_id;
+UPDATE bill
+SET final_price = final_price - _old_amount * _addition_price + _new_amount * _addition_price
+WHERE id = _bill_id;
+END;
+$$;
+
+
+-- DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeleteBillItemAddition(
+        _bill_id CHAR(36),
+        _item_id CHAR(36),
+        _addition_id CHAR(36)
+    ) LANGUAGE plpgsql AS $$
+DECLARE _old_amount INT;
+_addition_price FLOAT;
+BEGIN
+SELECT amount,
+    addition_price INTO _old_amount,
+    _addition_price
+FROM bill_item_addition
+WHERE bill_id = _bill_id
+    AND item_id = _item_id
+    AND addition_id = _addition_id;
+DELETE FROM bill_item_addition
+WHERE bill_id = _bill_id
+    AND item_id = _item_id
+    AND addition_id = _addition_id;
+UPDATE bill
+SET final_price = final_price - _old_amount * _addition_price
+WHERE id = _bill_id;
+END;
+$$;
+
+
+--------------------------Display----------------------------------
+
+
+-- GET
+
+
+CREATE OR REPLACE PROCEDURE ViewDisplaysByRestaurantId(
+    IN _restaurant_id VARCHAR(36),
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT d.id AS "display_id",
+        d.name AS "display_name",
+        r.id AS "restaurant_id"
+    FROM display AS d
+    INNER JOIN restaurant AS r ON d.restaurant_id = r.id
+    WHERE d.restaurant_id = _restaurant_id
+    ORDER BY d.id
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountDisplaysByRestaurantId(
+    IN _restaurant_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM display
+    WHERE restaurant_id = _restaurant_id;
+END;
+$$;
+
+
+-- DELETE
+
+
+CREATE OR REPLACE PROCEDURE DeleteDisplay(
+    IN _display_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    DELETE FROM display_item_type
+    WHERE display_id = _display_id;
+
+    DELETE FROM display
+    WHERE id = _display_id;
+END;
+$$;
+
+
+--------------------------Display Item Type----------------------------------
+
+
+CREATE OR REPLACE PROCEDURE ViewDisplayItemTypeWithName(
+    IN _display_id VARCHAR(36),
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT dit.id AS "display_item_type_id",
+        d.name AS "display_name",
+        it.name AS "item_type_name"
+    FROM display_item_type AS dit
+    INNER JOIN display AS d ON dit.display_id = d.id
+    INNER JOIN item_type AS it ON dit.item_type_id = it.id
+    WHERE dit.display_id = _display_id
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountDisplayItemTypeWithName(
+    IN _display_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM display_item_type AS dit
+    INNER JOIN display AS d ON dit.display_id = d.id
+    INNER JOIN item_type AS it ON dit.item_type_id = it.id
+    WHERE dit.display_id = _display_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ViewItemTypesNotInDisplayItemType(
+    IN _limit INT,
+    IN _offset INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT it.id AS "item_type_id",
+        it.name AS "item_type_name"
+    FROM item_type AS it
+    WHERE NOT EXISTS (
+            SELECT 1
+            FROM display_item_type AS dit
+            WHERE dit.item_type_id = it.id
+        )
+    ORDER BY it.name
+    LIMIT _limit OFFSET _offset;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountActiveItemTypesNotInDisplayItemType()
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM item_type AS it
+    WHERE NOT EXISTS (
+            SELECT 1
+            FROM display_item_type AS dit
+            WHERE dit.item_type_id = it.id
+        );
+END;
+$$;
+
+
+--------------------------Info----------------------------------
+
+
+CREATE OR REPLACE PROCEDURE ViewBillItemsByReadyStatusAndDisplay(
+    _ready_status ready_status,
+    _display_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT bi.id AS "bill_item_id",
+        bi.ready_status AS "ready_status",
+        p.name AS "pack_name",
+        it.name AS "item_name",
+        bi.bill_id AS "bill_id",
+        bi.description AS "description",
+        bi.amount AS "amount"
+    FROM bill_item AS bi
+    LEFT JOIN pack AS p ON bi.pack_id = p.id
+    INNER JOIN item AS i ON bi.item_id = i.id
+    INNER JOIN item_type AS it ON i.item_type_id = it.id
+    INNER JOIN display_item_type AS dit ON dit.item_type_id = i.item_type_id
+    WHERE bi.ready_status = _ready_status
+        AND dit.display_id = _display_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountBillItemsByReadyStatusAndDisplay(
+    _ready_status ready_status,
+    _display_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM bill_item AS bi
+    LEFT JOIN pack AS p ON bi.pack_id = p.id
+    INNER JOIN item AS i ON bi.item_id = i.id
+    INNER JOIN item_type AS it ON i.item_type_id = it.id
+    INNER JOIN display_item_type AS dit ON dit.item_type_id = i.item_type_id
+    WHERE bi.ready_status = _ready_status
+        AND dit.display_id = _display_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ViewBillByUserIdNotClosed(
+    _user_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT b.id AS "bill_id",
+        b.restaurant_id AS "restaurant_id",
+        b.order_status AS "order_status",
+        b.user_id AS "user_id",
+        b.discount_id AS "discount_id",
+        b.payment_type_id AS "payment_type_id",
+        b.client_nip AS "client_nip",
+        b.final_price AS "final_price",
+        b.final_ptu AS "final_ptu",
+        b.bill_number AS "bill_number",
+        b.cash_register_number AS "cash_register_number",
+        b.hall_table_id AS "hall_table_id",
+        b.order_date AS "order_date"
+    FROM bill AS b
+    WHERE b.user_id = _user_id
+        AND b.order_status <> 'closed';
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountBillByUserIdNotClosed(
+    _user_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM bill AS b
+    WHERE b.user_id = _user_id
+        AND b.order_status <> 'closed';
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ViewClosedBillByLastDay(
+    _user_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT b.id AS "bill_id",
+        b.restaurant_id AS "restaurant_id",
+        b.order_status AS "order_status",
+        b.user_id AS "user_id",
+        b.discount_id AS "discount_id",
+        b.payment_type_id AS "payment_type_id",
+        b.client_nip AS "client_nip",
+        b.final_price AS "final_price",
+        b.final_ptu AS "final_ptu",
+        b.bill_number AS "bill_number",
+        b.cash_register_number AS "cash_register_number",
+        b.hall_table_id AS "hall_table_id",
+        b.order_date AS "order_date"
+    FROM bill AS b
+    WHERE b.user_id = _user_id
+        AND b.order_status = 'closed'
+        AND b.order_date::date = (
+            SELECT MAX(order_date::date)
+            FROM bill
+            WHERE user_id = _user_id
+        );
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE CountClosedBillByLastDay(
+    _user_id VARCHAR(36)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT COUNT(*)
+    FROM bill AS b
+    WHERE b.user_id = _user_id
+        AND b.order_status = 'closed'
+        AND b.order_date::date = (
+            SELECT MAX(order_date::date)
+            FROM bill
+            WHERE user_id = _user_id
+        );
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ChangeBillStatus(
+    _bill_id VARCHAR(36),
+    _new_status order_status
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE bill
+    SET order_status = _new_status
+    WHERE id = _bill_id;
+END;
+$$;
+
+
+CREATE OR REPLACE PROCEDURE ChangeBillItemStatus(
+    _bill_item_id VARCHAR(36),
+    _new_status ready_status
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE bill_item
+    SET ready_status = _new_status
+    WHERE id = _bill_item_id;
+END;
+$$;
